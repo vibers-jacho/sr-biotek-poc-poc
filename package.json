@@ -55,7 +55,6 @@
       },
       "scripts": {
             "dev": "vite",
-            "build": "vite build",
-            "vercel-build": "npm install --force && vite build"
+            "build": "vite build"
       }
 }

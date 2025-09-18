@@ -1,7 +1,8 @@
 {
-  "buildCommand": "npm run build",
+  "buildCommand": "npm run vercel-build",
   "outputDirectory": "build",
-  "framework": "vite",
+  "framework": null,
+  "installCommand": "npm install --force",
   "rewrites": [
     {
       "source": "/(.*)",

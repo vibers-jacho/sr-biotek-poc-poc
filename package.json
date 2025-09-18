@@ -50,12 +50,8 @@
       },
       "devDependencies": {
             "@types/node": "^20.10.0",
-            "@vitejs/plugin-react-swc": "^3.10.2",
-            "vite": "6.3.5",
-            "@rollup/rollup-linux-x64-gnu": "^4.9.6"
-      },
-      "optionalDependencies": {
-            "@rollup/rollup-linux-x64-gnu": "^4.9.6"
+            "@vitejs/plugin-react": "^4.2.1",
+            "vite": "6.3.5"
       },
       "scripts": {
             "dev": "vite",

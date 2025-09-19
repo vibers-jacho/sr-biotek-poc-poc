@@ -248,34 +248,34 @@ export function InfluencerList({ influencers, onUpdateInfluencer }: InfluencerLi
       <CardContent>
         <div className="w-full">
           <Table>
-            <TableHeader className="border-b">
+            <TableHeader className="border-b bg-gray-100">
               <TableRow>
-                <TableHead className="min-w-[200px] sticky left-0 bg-background z-20">
+                <TableHead className="min-w-[200px] sticky left-0 bg-gray-100 z-20">
                   <Button variant="ghost" onClick={() => handleSort('username')} className="h-auto p-0 justify-start">
                     인플루언서 <ArrowUpDown className="ml-1 h-3 w-3" />
                   </Button>
                 </TableHead>
-                <TableHead className="w-36">
+                <TableHead className="w-36 bg-gray-100">
                   <Button variant="ghost" onClick={() => handleSort('status')} className="h-auto p-0 justify-start">
                     상태 <ArrowUpDown className="ml-1 h-3 w-3" />
                   </Button>
                 </TableHead>
-                <TableHead className="w-48">진행상황</TableHead>
-                <TableHead className="w-32">유형</TableHead>
-                <TableHead className="w-36">병원</TableHead>
-                <TableHead className="w-20 text-center">
+                <TableHead className="w-48 bg-gray-100">진행상황</TableHead>
+                <TableHead className="w-32 bg-gray-100">유형</TableHead>
+                <TableHead className="w-36 bg-gray-100">병원</TableHead>
+                <TableHead className="w-20 text-center bg-gray-100">
                   <Button variant="ghost" onClick={() => handleSort('round')} className="h-auto p-0">
                     회차 <ArrowUpDown className="ml-1 h-3 w-3" />
                   </Button>
                 </TableHead>
-                <TableHead className="w-32 text-right">
+                <TableHead className="w-32 text-right bg-gray-100">
                   <Button variant="ghost" onClick={() => handleSort('views')} className="h-auto p-0">
                     참여도 <ArrowUpDown className="ml-1 h-3 w-3" />
                   </Button>
                 </TableHead>
-                <TableHead className="w-32 text-center">예약일</TableHead>
-                <TableHead className="w-20 text-center">거절</TableHead>
-                <TableHead className="w-16 text-center"></TableHead>
+                <TableHead className="w-32 text-center bg-gray-100">예약일</TableHead>
+                <TableHead className="w-20 text-center bg-gray-100">거절</TableHead>
+                <TableHead className="w-16 text-center bg-gray-100"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

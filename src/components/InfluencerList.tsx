@@ -3,13 +3,14 @@ import { Influencer } from '../types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Checkbox } from './ui/checkbox';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Search, ArrowUpDown, ChevronLeft, ChevronRight, ChevronDown, ChevronRight as ChevronRightSmall, MoreHorizontal, Eye, Heart, Bookmark, User } from 'lucide-react';
 import { statusOptions, typeOptions, hospitals } from '../data/mockData';
 import { EditableCell } from './EditableCell';
-import { CampaignWorkflow } from './WorkflowProgress';
 import { Switch } from './ui/switch';
 import { toast } from 'sonner';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
@@ -28,10 +29,34 @@ interface InfluencerListProps {
   onUpdateInfluencer: (id: string, updates: Partial<Influencer>) => void;
 }
 
+interface Column {
+  id: string;
+  label: string;
+  width?: string;
+  align?: 'left' | 'center' | 'right';
+  sortable?: boolean;
+  sortKey?: keyof Influencer;
+}
+
+const defaultColumns: Column[] = [
+  { id: 'influencer', label: '인플루언서', width: 'min-w-[200px]', sortable: true, sortKey: 'username' },
+  { id: 'status', label: '상태', width: 'w-36', sortable: true, sortKey: 'status' },
+  { id: 'hasReply', label: '회신 여부', width: 'w-24', align: 'center' },
+  { id: 'googleFormSent', label: '구글폼 전송', width: 'w-32', align: 'center' },
+  { id: 'googleFormReply', label: '구글폼 회신', width: 'w-32', align: 'center' },
+  { id: 'isRejected', label: '거절', width: 'w-20', align: 'center' },
+  { id: 'type', label: '유형', width: 'w-32' },
+  { id: 'hospital', label: '병원', width: 'w-36' },
+  { id: 'round', label: '회차', width: 'w-20', align: 'center', sortable: true, sortKey: 'round' },
+  { id: 'views', label: '참여도', width: 'w-32', align: 'right', sortable: true, sortKey: 'views' },
+  { id: 'confirmedDate', label: '예약일', width: 'w-32', align: 'center' },
+  { id: 'actions', label: '', width: 'w-16', align: 'center' }
+];
+
 export function InfluencerList({ influencers, onUpdateInfluencer }: InfluencerListProps) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [typeFilter, setTypeFilter] = useState<string[]>([]);
   const [hospitalFilter, setHospitalFilter] = useState<string>('all');
   const [roundFilter, setRoundFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<keyof Influencer>('username');
@@ -39,6 +64,8 @@ export function InfluencerList({ influencers, onUpdateInfluencer }: InfluencerLi
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(50);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [columns, setColumns] = useState<Column[]>(defaultColumns);
+  const [draggedColumn, setDraggedColumn] = useState<string | null>(null);
 
   const handleUpdate = (id: string, field: string, value: any) => {
     onUpdateInfluencer(id, { [field]: value });
@@ -58,14 +85,266 @@ export function InfluencerList({ influencers, onUpdateInfluencer }: InfluencerLi
     setExpandedRows(newExpanded);
   };
 
+  const handleDragStart = (e: React.DragEvent, columnId: string) => {
+    setDraggedColumn(columnId);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e: React.DragEvent, targetColumnId: string) => {
+    e.preventDefault();
+
+    if (!draggedColumn || draggedColumn === targetColumnId) {
+      return;
+    }
+
+    const draggedIndex = columns.findIndex(col => col.id === draggedColumn);
+    const targetIndex = columns.findIndex(col => col.id === targetColumnId);
+
+    const newColumns = [...columns];
+    const [draggedCol] = newColumns.splice(draggedIndex, 1);
+    newColumns.splice(targetIndex, 0, draggedCol);
+
+    setColumns(newColumns);
+    setDraggedColumn(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedColumn(null);
+  };
+
+  const renderCell = (column: Column, influencer: Influencer) => {
+    switch (column.id) {
+      case 'influencer':
+        return (
+          <div className="flex items-center gap-2.5">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-4 w-4 p-0 hover:bg-transparent"
+              onClick={() => toggleRowExpansion(influencer.id)}
+            >
+              {expandedRows.has(influencer.id) ? (
+                <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+              ) : (
+                <ChevronRightSmall className="h-3.5 w-3.5 text-muted-foreground" />
+              )}
+            </Button>
+            <div className="flex items-center justify-center h-7 w-7 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex-shrink-0">
+              <User className="h-4 w-4 text-white" />
+            </div>
+            <div className="flex flex-col min-w-0 flex-1">
+              <div className="flex items-center gap-1">
+                <span className="font-medium text-sm text-foreground">{influencer.username}</span>
+              </div>
+              <a
+                href={influencer.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-muted-foreground hover:text-blue-600 transition-colors truncate"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {influencer.url.replace('https://www.instagram.com/', '@').replace('/', '')}
+              </a>
+            </div>
+          </div>
+        );
+
+      case 'status':
+        return (
+          <EditableCell
+            value={influencer.status}
+            type="select"
+            options={statusOptions.map(s => ({ value: s, label: s }))}
+            onSave={(value) => handleUpdate(influencer.id, 'status', value)}
+            displayFormatter={(val) => {
+              const variant = getStatusBadgeVariant(val);
+              let className = "text-xs font-medium ";
+
+              if (variant === 'success') className += "bg-green-100 text-green-700 hover:bg-green-200";
+              else if (variant === 'warning') className += "bg-yellow-100 text-yellow-700 hover:bg-yellow-200";
+              else if (variant === 'info') className += "bg-blue-100 text-blue-700 hover:bg-blue-200";
+              else if (variant === 'destructive') className += "bg-red-100 text-red-700 hover:bg-red-200";
+              else className += "bg-gray-100 text-gray-700 hover:bg-gray-200";
+
+              return <Badge className={className}>{val}</Badge>;
+            }}
+          />
+        );
+
+      case 'hasReply':
+        return (
+          <div className="flex justify-center">
+            <button
+              onClick={() => handleUpdate(influencer.id, 'hasReply', !influencer.hasReply)}
+              className="relative inline-flex h-5 w-5 items-center justify-center rounded-md border-2 transition-colors duration-200 transform-gpu"
+              style={{
+                backgroundColor: influencer.hasReply === true ? '#3b82f6' : '#ffffff',
+                borderColor: influencer.hasReply === true ? '#3b82f6' : '#d1d5db',
+                willChange: 'background-color, border-color'
+              }}
+            >
+              {influencer.hasReply === true && (
+                <svg className="w-3 h-3 text-white pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+            </button>
+          </div>
+        );
+
+      case 'googleFormSent':
+        return (
+          <div className="flex justify-center">
+            <button
+              onClick={() => handleUpdate(influencer.id, 'googleFormSent', !influencer.googleFormSent)}
+              className="relative inline-flex h-5 w-5 items-center justify-center rounded-md border-2 transition-colors duration-200 transform-gpu"
+              style={{
+                backgroundColor: influencer.googleFormSent === true ? '#10b981' : '#ffffff',
+                borderColor: influencer.googleFormSent === true ? '#10b981' : '#d1d5db',
+                willChange: 'background-color, border-color'
+              }}
+            >
+              {influencer.googleFormSent === true && (
+                <svg className="w-3 h-3 text-white pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+            </button>
+          </div>
+        );
+
+      case 'googleFormReply':
+        return (
+          <div className="flex justify-center">
+            <button
+              onClick={() => handleUpdate(influencer.id, 'googleFormReply', !influencer.googleFormReply)}
+              className="relative inline-flex h-5 w-5 items-center justify-center rounded-md border-2 transition-colors duration-200 transform-gpu"
+              style={{
+                backgroundColor: influencer.googleFormReply === true ? '#8b5cf6' : '#ffffff',
+                borderColor: influencer.googleFormReply === true ? '#8b5cf6' : '#d1d5db',
+                willChange: 'background-color, border-color'
+              }}
+            >
+              {influencer.googleFormReply === true && (
+                <svg className="w-3 h-3 text-white pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+            </button>
+          </div>
+        );
+
+      case 'type':
+        return (
+          <EditableCell
+            value={influencer.type}
+            type="select"
+            options={typeOptions.map(t => ({ value: t, label: t }))}
+            onSave={(value) => handleUpdate(influencer.id, 'type', value)}
+            displayFormatter={(val) => (
+              <span className="text-sm text-muted-foreground">{val}</span>
+            )}
+          />
+        );
+
+      case 'hospital':
+        return (
+          <EditableCell
+            value={influencer.hospital}
+            type="select"
+            options={hospitals.map(h => ({ value: h, label: h }))}
+            onSave={(value) => handleUpdate(influencer.id, 'hospital', value)}
+            placeholder="미지정"
+            displayFormatter={(val) => (
+              <span className="text-sm text-muted-foreground">{val || '미지정'}</span>
+            )}
+          />
+        );
+
+      case 'round':
+        return <span className="text-sm font-medium text-muted-foreground">{influencer.round}</span>;
+
+      case 'views':
+        return (
+          <span className="text-sm font-medium text-muted-foreground">
+            {influencer.views > 0 ? influencer.views.toLocaleString() : '-'}
+          </span>
+        );
+
+      case 'confirmedDate':
+        return (
+          <EditableCell
+            value={influencer.confirmedDate}
+            type="date"
+            onSave={(value) => handleUpdate(influencer.id, 'confirmedDate', value)}
+            placeholder="-"
+            displayFormatter={(val) => (
+              <span className="text-sm text-muted-foreground">{val || '-'}</span>
+            )}
+          />
+        );
+
+      case 'isRejected':
+        return (
+          <Switch
+            checked={influencer.isRejected}
+            onCheckedChange={(checked: boolean) => handleUpdate(influencer.id, 'isRejected', checked)}
+            style={{
+              backgroundColor: influencer.isRejected ? '#ef4444' : '#e5e7eb',
+              borderColor: influencer.isRejected ? '#dc2626' : '#d1d5db',
+            }}
+          />
+        );
+
+      case 'actions':
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-7 w-7 p-0">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => window.open(influencer.url, '_blank')}>
+                프로필 보기
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => {
+                const newUsername = window.prompt('새 사용자 이름을 입력하세요:', influencer.username);
+                if (newUsername && newUsername !== influencer.username) {
+                  handleUpdate(influencer.id, 'username', newUsername);
+                }
+              }}>
+                이름 편집
+              </DropdownMenuItem>
+              <DropdownMenuItem>연락처 관리</DropdownMenuItem>
+              <DropdownMenuItem>히스토리 보기</DropdownMenuItem>
+              <DropdownMenuItem>노트 추가</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="text-destructive">
+                삭제
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+
+      default:
+        return null;
+    }
+  };
+
 
 
   const filteredAndSortedInfluencers = useMemo(() => {
     let filtered = influencers.filter(influencer => {
       const matchesSearch = influencer.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            influencer.url.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesStatus = statusFilter === 'all' || influencer.status === statusFilter;
-      const matchesType = typeFilter === 'all' || influencer.type === typeFilter;
+      const matchesStatus = statusFilter.length === 0 || statusFilter.includes(influencer.status);
+      const matchesType = typeFilter.length === 0 || typeFilter.includes(influencer.type);
       const matchesHospital = hospitalFilter === 'all' || influencer.hospital === hospitalFilter;
       const matchesRound = roundFilter === 'all' || influencer.round.toString() === roundFilter;
 
@@ -195,29 +474,105 @@ export function InfluencerList({ influencers, onUpdateInfluencer }: InfluencerLi
             />
           </div>
           
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="상태 필터" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">모든 상태</SelectItem>
-              {statusOptions.map(status => (
-                <SelectItem key={status} value={status}>{status}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          
-          <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="유형 필터" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">모든 유형</SelectItem>
-              {typeOptions.map(type => (
-                <SelectItem key={type} value={type}>{type}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="w-48 justify-between">
+                {statusFilter.length === 0
+                  ? "모든 상태"
+                  : statusFilter.length === 1
+                  ? statusFilter[0]
+                  : `${statusFilter.length}개 선택됨`}
+                <ChevronDown className="ml-2 h-4 w-4 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-48 p-2" align="start">
+              <div className="space-y-2">
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start h-8 px-2"
+                  onClick={() => setStatusFilter([])}
+                >
+                  모두 선택 해제
+                </Button>
+                <div className="border-t pt-2 space-y-1">
+                  {statusOptions.map(status => (
+                    <div key={status} className="flex items-center space-x-2 py-1 px-2 hover:bg-gray-100 rounded">
+                      <Checkbox
+                        checked={statusFilter.includes(status)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setStatusFilter([...statusFilter, status]);
+                          } else {
+                            setStatusFilter(statusFilter.filter(s => s !== status));
+                          }
+                        }}
+                      />
+                      <label className="text-sm flex-1 cursor-pointer" onClick={(e) => {
+                        e.preventDefault();
+                        if (statusFilter.includes(status)) {
+                          setStatusFilter(statusFilter.filter(s => s !== status));
+                        } else {
+                          setStatusFilter([...statusFilter, status]);
+                        }
+                      }}>
+                        {status}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="w-48 justify-between">
+                {typeFilter.length === 0
+                  ? "모든 유형"
+                  : typeFilter.length === 1
+                  ? typeFilter[0]
+                  : `${typeFilter.length}개 선택됨`}
+                <ChevronDown className="ml-2 h-4 w-4 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-48 p-2" align="start">
+              <div className="space-y-2">
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start h-8 px-2"
+                  onClick={() => setTypeFilter([])}
+                >
+                  모두 선택 해제
+                </Button>
+                <div className="border-t pt-2 space-y-1">
+                  {typeOptions.map(type => (
+                    <div key={type} className="flex items-center space-x-2 py-1 px-2 hover:bg-gray-100 rounded">
+                      <Checkbox
+                        checked={typeFilter.includes(type)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setTypeFilter([...typeFilter, type]);
+                          } else {
+                            setTypeFilter(typeFilter.filter(t => t !== type));
+                          }
+                        }}
+                      />
+                      <label className="text-sm flex-1 cursor-pointer" onClick={(e) => {
+                        e.preventDefault();
+                        if (typeFilter.includes(type)) {
+                          setTypeFilter(typeFilter.filter(t => t !== type));
+                        } else {
+                          setTypeFilter([...typeFilter, type]);
+                        }
+                      }}>
+                        {type}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
           
           <Select value={hospitalFilter} onValueChange={setHospitalFilter}>
             <SelectTrigger className="w-48">
@@ -250,38 +605,70 @@ export function InfluencerList({ influencers, onUpdateInfluencer }: InfluencerLi
           <Table>
             <TableHeader className="border-b bg-gray-100">
               <TableRow>
-                <TableHead className="min-w-[200px] sticky left-0 bg-gray-100 z-20">
-                  <Button variant="ghost" onClick={() => handleSort('username')} className="h-auto p-0 justify-start">
-                    인플루언서 <ArrowUpDown className="ml-1 h-3 w-3" />
-                  </Button>
-                </TableHead>
-                <TableHead className="w-36 bg-gray-100">
-                  <Button variant="ghost" onClick={() => handleSort('status')} className="h-auto p-0 justify-start">
-                    상태 <ArrowUpDown className="ml-1 h-3 w-3" />
-                  </Button>
-                </TableHead>
-                <TableHead className="w-48 bg-gray-100">진행상황</TableHead>
-                <TableHead className="w-32 bg-gray-100">유형</TableHead>
-                <TableHead className="w-36 bg-gray-100">병원</TableHead>
-                <TableHead className="w-20 text-center bg-gray-100">
-                  <Button variant="ghost" onClick={() => handleSort('round')} className="h-auto p-0">
-                    회차 <ArrowUpDown className="ml-1 h-3 w-3" />
-                  </Button>
-                </TableHead>
-                <TableHead className="w-32 text-right bg-gray-100">
-                  <Button variant="ghost" onClick={() => handleSort('views')} className="h-auto p-0">
-                    참여도 <ArrowUpDown className="ml-1 h-3 w-3" />
-                  </Button>
-                </TableHead>
-                <TableHead className="w-32 text-center bg-gray-100">예약일</TableHead>
-                <TableHead className="w-20 text-center bg-gray-100">거절</TableHead>
-                <TableHead className="w-16 text-center bg-gray-100"></TableHead>
+                {columns.map((column) => (
+                  <TableHead
+                    key={column.id}
+                    className={`
+                      ${column.width || ''}
+                      ${column.align === 'center' ? 'text-center' : column.align === 'right' ? 'text-right' : ''}
+                      ${column.id === 'influencer' ? 'sticky left-0 z-20' : ''}
+                      bg-gray-100 cursor-move relative group
+                    `}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, column.id)}
+                    onDragOver={handleDragOver}
+                    onDrop={(e) => handleDrop(e, column.id)}
+                    onDragEnd={handleDragEnd}
+                    style={{
+                      opacity: draggedColumn === column.id ? 0.5 : 1,
+                      transition: 'opacity 0.2s'
+                    }}
+                  >
+                    <div className="flex items-center justify-between">
+                      {column.sortable ? (
+                        <Button
+                          variant="ghost"
+                          onClick={() => handleSort(column.sortKey!)}
+                          className={`h-auto p-0 ${column.align === 'center' || column.align === 'right' ? '' : 'justify-start'}`}
+                        >
+                          {column.label} <ArrowUpDown className="ml-1 h-3 w-3" />
+                        </Button>
+                      ) : (
+                        <span>{column.label}</span>
+                      )}
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity ml-2">
+                        <svg width="8" height="12" viewBox="0 0 8 12" fill="none" className="text-gray-400">
+                          <circle cx="2" cy="2" r="1" fill="currentColor"/>
+                          <circle cx="6" cy="2" r="1" fill="currentColor"/>
+                          <circle cx="2" cy="6" r="1" fill="currentColor"/>
+                          <circle cx="6" cy="6" r="1" fill="currentColor"/>
+                          <circle cx="2" cy="10" r="1" fill="currentColor"/>
+                          <circle cx="6" cy="10" r="1" fill="currentColor"/>
+                        </svg>
+                      </div>
+                    </div>
+                  </TableHead>
+                ))}
               </TableRow>
             </TableHeader>
             <TableBody>
               {paginatedInfluencers.map(influencer => (
                 <React.Fragment key={influencer.id}>
                   <TableRow className="hover:bg-muted/30 transition-colors h-12">
+                    {columns.map((column) => (
+                      <TableCell
+                        key={column.id}
+                        className={`
+                          ${column.align === 'center' ? 'text-center' : column.align === 'right' ? 'text-right' : ''}
+                          ${column.id === 'influencer' ? 'font-medium sticky left-0 bg-background z-10' : ''}
+                        `}
+                      >
+                        {renderCell(column, influencer)}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                  {/* Keep the original static layout for now - will be replaced later */}
+                  <TableRow className="hover:bg-muted/30 transition-colors h-12" style={{ display: 'none' }}>
                     <TableCell className="font-medium sticky left-0 bg-background z-10">
                       <div className="flex items-center gap-2.5">
                         <Button
@@ -339,14 +726,65 @@ export function InfluencerList({ influencers, onUpdateInfluencer }: InfluencerLi
                         }}
                       />
                     </TableCell>
-                    <TableCell>
-                      <CampaignWorkflow
-                        hasReply={influencer.hasReply}
-                        isRejected={influencer.isRejected}
-                        googleFormSent={influencer.googleFormSent}
-                        googleFormReply={influencer.googleFormReply}
-                        onUpdate={(field, value) => handleUpdate(influencer.id, field, value)}
-                      />
+                    <TableCell className="text-center">
+                      <div className="flex justify-center">
+                        <button
+                          onClick={() => handleUpdate(influencer.id, 'hasReply', !influencer.hasReply)}
+                          className="relative inline-flex h-5 w-5 items-center justify-center rounded-md border-2 transition-colors duration-200 transform-gpu"
+                          style={{
+                            backgroundColor: influencer.hasReply === true ? '#3b82f6' : '#ffffff',
+                            borderColor: influencer.hasReply === true ? '#3b82f6' : '#d1d5db',
+                            willChange: 'background-color, border-color'
+                          }}
+                          aria-pressed={influencer.hasReply === true}
+                        >
+                          {influencer.hasReply === true && (
+                            <svg className="w-3 h-3 text-white pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                        </button>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <div className="flex justify-center">
+                        <button
+                          onClick={() => handleUpdate(influencer.id, 'googleFormSent', !influencer.googleFormSent)}
+                          className="relative inline-flex h-5 w-5 items-center justify-center rounded-md border-2 transition-colors duration-200 transform-gpu"
+                          style={{
+                            backgroundColor: influencer.googleFormSent === true ? '#10b981' : '#ffffff',
+                            borderColor: influencer.googleFormSent === true ? '#10b981' : '#d1d5db',
+                            willChange: 'background-color, border-color'
+                          }}
+                          aria-pressed={influencer.googleFormSent === true}
+                        >
+                          {influencer.googleFormSent === true && (
+                            <svg className="w-3 h-3 text-white pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                        </button>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <div className="flex justify-center">
+                        <button
+                          onClick={() => handleUpdate(influencer.id, 'googleFormReply', !influencer.googleFormReply)}
+                          className="relative inline-flex h-5 w-5 items-center justify-center rounded-md border-2 transition-colors duration-200 transform-gpu"
+                          style={{
+                            backgroundColor: influencer.googleFormReply === true ? '#8b5cf6' : '#ffffff',
+                            borderColor: influencer.googleFormReply === true ? '#8b5cf6' : '#d1d5db',
+                            willChange: 'background-color, border-color'
+                          }}
+                          aria-pressed={influencer.googleFormReply === true}
+                        >
+                          {influencer.googleFormReply === true && (
+                            <svg className="w-3 h-3 text-white pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                        </button>
+                      </div>
                     </TableCell>
                     <TableCell>
                       <EditableCell
@@ -445,7 +883,7 @@ export function InfluencerList({ influencers, onUpdateInfluencer }: InfluencerLi
                   </TableRow>
                   {expandedRows.has(influencer.id) && (
                     <TableRow style={{ backgroundColor: '#fafbfc' }}>
-                      <TableCell colSpan={10} style={{
+                      <TableCell colSpan={columns.length} style={{
                         padding: '40px 30px',
                         borderLeft: '3px solid #3b82f6',
                         borderBottom: '1px solid #e5e7eb'
@@ -660,7 +1098,7 @@ export function InfluencerList({ influencers, onUpdateInfluencer }: InfluencerLi
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="mt-6 flex items-center justify-center gap-4">
+          <div className="mt-6 pt-6 flex items-center justify-center gap-4">
             <div className="text-sm text-muted-foreground whitespace-nowrap">
               페이지 {currentPage} / {totalPages}
             </div>

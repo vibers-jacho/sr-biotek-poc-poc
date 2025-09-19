@@ -164,7 +164,7 @@ export function ContactManagement({ contactInfo, influencers, hospital, onUpdate
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="space-y-2">
+                        <div className="flex flex-col gap-2">
                           <DatePicker
                             date={contact.appointmentDate ? parse(contact.appointmentDate, 'yyyy-MM-dd', new Date()) : undefined}
                             onDateChange={(date) => {

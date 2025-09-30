@@ -4,33 +4,41 @@ import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { 
-  Pagination, 
-  PaginationContent, 
-  PaginationEllipsis, 
-  PaginationItem, 
-  PaginationLink, 
-  PaginationNext, 
-  PaginationPrevious 
+import { Tabs, TabsList, TabsTrigger } from './ui/tabs';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious
 } from './ui/pagination';
 import { Influencer } from '../types';
-import { TrendingUp, Users, Eye, BookmarkIcon, MessageCircle, Calendar, DollarSign, Search, Filter, Grid3X3, List, ArrowUpDown, Info, Star, Target } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, LineChart, Line, Legend } from 'recharts';
+import { TrendingUp, Users, Eye, BookmarkIcon, MessageCircle, Calendar, DollarSign, Search, Grid3X3, List, ArrowUpDown, Info, Star, Target, ChevronDown, ChevronUp, BarChart3, User } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, LineChart, Line, Legend, BarChart, Bar } from 'recharts';
 
 interface CampaignOverviewProps {
   data: Influencer[];
   onCampaignSelect?: (campaign: string) => void;
+  dateRange?: { start: string; end: string };
+  selectedCampaigns?: string[];
 }
 
-export function CampaignOverview({ data, onCampaignSelect }: CampaignOverviewProps) {
+export function CampaignOverview({ data, onCampaignSelect, dateRange, selectedCampaigns = [] }: CampaignOverviewProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'name' | 'performance' | 'influencers' | 'views' | 'emv' | 'roas'>('emv');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active'>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedMetric, setSelectedMetric] = useState<'emv' | 'roas' | 'avgEmv' | 'cost' | null>('emv');
+  const [expandedAnalysisSection, setExpandedAnalysisSection] = useState<string | null>(null);
   const itemsPerPage = 10;
+
+  // Helper function to toggle analysis sections
+  const toggleAnalysisSection = (section: string) => {
+    setExpandedAnalysisSection(expandedAnalysisSection === section ? null : section);
+  };
 
   // 캠페인별 데이터 그룹핑
   const campaignGroups = data.reduce((acc, influencer) => {
@@ -145,29 +153,93 @@ export function CampaignOverview({ data, onCampaignSelect }: CampaignOverviewPro
   const totalCost = data.reduce((sum, item) => sum + (item.cost || 0), 0);
   const averageROAS = data.length > 0 ? data.reduce((sum, item) => sum + (item.roas || 0), 0) / data.length : 0;
 
-  // 시간대별 데이터 생성 (최근 12개월)
-  const generateTimelineData = () => {
-    const months = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
-    const baseEMV = totalEMV / 12;
-    const baseROAS = averageROAS;
-    const baseAvgEMV = averageEMV;
-    const baseCost = totalCost / 12;
+  // 시간대별 데이터 생성 (선택된 날짜 범위 및 캠페인 기반)
+  const timelineData = React.useMemo(() => {
+    if (!dateRange) return [];
 
-    return months.map((month, index) => {
-      const variance = 0.7 + Math.random() * 0.6; // 0.7 ~ 1.3 사이의 변동
-      const trend = 1 + (index * 0.05); // 시간에 따른 상승 트렌드
+    const startDate = new Date(dateRange.start);
+    const endDate = new Date(dateRange.end);
+    const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
 
-      return {
-        month,
-        emv: Math.floor(baseEMV * variance * trend),
-        roas: Number((baseROAS * (0.85 + Math.random() * 0.3) * trend).toFixed(1)),
-        avgEmv: Math.floor(baseAvgEMV * variance * trend),
-        cost: Math.floor(baseCost * variance * trend),
+    // 날짜 범위에 따라 적절한 간격 결정
+    let intervalDays: number;
+    let datePoints: Date[] = [];
+
+    if (daysDiff <= 7) {
+      intervalDays = 1;
+    } else if (daysDiff <= 31) {
+      intervalDays = 7;
+    } else if (daysDiff <= 90) {
+      intervalDays = 14;
+    } else {
+      intervalDays = 30;
+    }
+
+    // 날짜 포인트 생성
+    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + intervalDays)) {
+      datePoints.push(new Date(d));
+    }
+
+    // 마지막 날짜가 endDate가 아니면 추가
+    if (datePoints.length === 0 || datePoints[datePoints.length - 1].getTime() !== endDate.getTime()) {
+      datePoints.push(new Date(endDate));
+    }
+
+    const numPoints = datePoints.length;
+
+    // 시드 값을 사용하여 일관된 랜덤 값 생성
+    const seededRandom = (seed: number) => {
+      const x = Math.sin(seed) * 10000;
+      return x - Math.floor(x);
+    };
+
+    // 모든 캠페인에 대한 통계 계산
+    const allCampaigns = Object.keys(campaignGroups);
+
+    return datePoints.map((date, index) => {
+      const dataPoint: any = {
+        month: `${date.getMonth() + 1}/${date.getDate()}`,
       };
-    });
-  };
 
-  const timelineData = generateTimelineData();
+      // 모든 캠페인 데이터 생성 (선택 여부와 관계없이)
+      allCampaigns.forEach((campaign, campaignIndex) => {
+        const campaignData = campaignGroups[campaign] || [];
+        const stats = getCampaignStats(campaignData);
+
+        const seedBase = index * 1000 + campaignIndex * 100;
+        const campaignVariance = 0.7 + seededRandom(seedBase) * 0.6;
+        const campaignTrend = 1 + (index * 0.03);
+
+        dataPoint[`${campaign}_emv`] = Math.floor((stats.totalEMV / numPoints) * campaignVariance * campaignTrend);
+        dataPoint[`${campaign}_roas`] = Number((stats.avgROAS * (0.85 + seededRandom(seedBase + 1) * 0.3) * campaignTrend).toFixed(1));
+        dataPoint[`${campaign}_avgEmv`] = Math.floor(stats.avgEMV * campaignVariance * campaignTrend);
+        dataPoint[`${campaign}_cost`] = Math.floor((stats.totalCost / numPoints) * campaignVariance * campaignTrend);
+      });
+
+      // "전체" 데이터 계산 - 모든 캠페인의 합계
+      let totalEMVSum = 0;
+      let totalROASSum = 0;
+      let totalAvgEMVSum = 0;
+      let totalCostSum = 0;
+      let campaignCount = 0;
+
+      allCampaigns.forEach((campaign) => {
+        totalEMVSum += dataPoint[`${campaign}_emv`] || 0;
+        totalROASSum += dataPoint[`${campaign}_roas`] || 0;
+        totalAvgEMVSum += dataPoint[`${campaign}_avgEmv`] || 0;
+        totalCostSum += dataPoint[`${campaign}_cost`] || 0;
+        campaignCount++;
+      });
+
+      dataPoint['전체_emv'] = Math.floor(totalEMVSum);
+      dataPoint['전체_roas'] = campaignCount > 0 ? Number((totalROASSum / campaignCount).toFixed(1)) : 0;
+      dataPoint['전체_avgEmv'] = campaignCount > 0 ? Math.floor(totalAvgEMVSum / campaignCount) : 0;
+      dataPoint['전체_cost'] = Math.floor(totalCostSum);
+
+      return dataPoint;
+    });
+  }, [dateRange, totalEMV, totalCost, averageROAS, averageEMV, campaignGroups]);
+  const campaignsToDisplay = selectedCampaigns.filter(c => c !== '전체');
 
   // 메트릭별 설정
   const metricConfig = {
@@ -200,10 +272,92 @@ export function CampaignOverview({ data, onCampaignSelect }: CampaignOverviewPro
   // 팔로워 유형별 색상
   const followerTypeColors = {
     '메가': '#8B5CF6',
-    '매크로': '#3B82F6', 
+    '매크로': '#3B82F6',
     '마이크로': '#10B981',
     '나노': '#F59E0B'
   };
+
+  // Chart colors for analysis sections
+  const chartColors = {
+    blue: '#3b82f6',
+    emerald: '#10b981',
+    amber: '#f59e0b',
+    red: '#ef4444',
+    purple: '#8b5cf6',
+    slate: '#64748b',
+    green: '#22c55e'
+  };
+
+  // Helper functions for data processing
+  const processCountryData = (metric: 'responseRate' | 'views' | 'emv' | 'roas') => {
+    return data.reduce((acc, item) => {
+      if (!item.country || item[metric] === undefined) return acc;
+      const existing = acc.find(x => x.name === item.country);
+      if (existing) {
+        if (metric === 'responseRate' || metric === 'roas') {
+          existing.values.push(item[metric]);
+        } else {
+          existing.value += item[metric];
+        }
+      } else {
+        acc.push({
+          name: item.country,
+          value: (metric === 'responseRate' || metric === 'roas') ? 0 : item[metric],
+          values: (metric === 'responseRate' || metric === 'roas') ? [item[metric]] : []
+        });
+      }
+      return acc;
+    }, [] as { name: string; value: number; values: number[] }[])
+    .map(item => ({
+      name: item.name,
+      value: (metric === 'responseRate' || metric === 'roas')
+        ? item.values.reduce((sum, val) => sum + val, 0) / item.values.length
+        : item.value
+    }));
+  };
+
+  const processFollowerTypeData = (metric: 'responseRate' | 'views' | 'emv' | 'roas') => {
+    return data.reduce((acc, item) => {
+      if (!item.followerType || item[metric] === undefined) return acc;
+      const existing = acc.find(x => x.name === item.followerType);
+      if (existing) {
+        if (metric === 'responseRate' || metric === 'roas') {
+          existing.values.push(item[metric]);
+        } else {
+          existing.value += item[metric];
+        }
+      } else {
+        acc.push({
+          name: item.followerType,
+          value: (metric === 'responseRate' || metric === 'roas') ? 0 : item[metric],
+          values: (metric === 'responseRate' || metric === 'roas') ? [item[metric]] : []
+        });
+      }
+      return acc;
+    }, [] as { name: string; value: number; values: number[] }[])
+    .map(item => ({
+      name: item.name,
+      value: (metric === 'responseRate' || metric === 'roas')
+        ? item.values.reduce((sum, val) => sum + val, 0) / item.values.length
+        : item.value
+    }));
+  };
+
+  // Analysis data
+  const responseRateByCountry = processCountryData('responseRate');
+  const viewsByCountry = processCountryData('views');
+  const emvByCountry = processCountryData('emv');
+  const roasByCountry = processCountryData('roas');
+
+  const responseRateByFollowerType = processFollowerTypeData('responseRate');
+  const viewsByFollowerType = processFollowerTypeData('views');
+  const emvByFollowerType = processFollowerTypeData('emv');
+  const roasByFollowerType = processFollowerTypeData('roas');
+
+  const savesData = Object.entries(campaignGroups).map(([campaign, influencers]) => ({
+    name: campaign,
+    value: influencers.reduce((sum, inf) => sum + (inf.saves || 0), 0)
+  })).sort((a, b) => b.value - a.value);
 
   return (
     <div className="space-y-8">
@@ -213,7 +367,13 @@ export function CampaignOverview({ data, onCampaignSelect }: CampaignOverviewPro
           <div className="w-6 h-6 bg-blue-100 rounded-lg flex items-center justify-center">
             <TrendingUp className="w-4 h-4 text-blue-600" />
           </div>
-          <h2 className="text-xl font-semibold text-slate-900">전체 캠페인 요약</h2>
+          <h2 className="text-xl font-semibold text-slate-900">
+            {selectedCampaigns.length === 0
+              ? '전체 캠페인 요약'
+              : selectedCampaigns.length === 1
+              ? `캠페인 요약 - ${selectedCampaigns[0]}`
+              : `캠페인 요약 - ${selectedCampaigns.length}개 선택`}
+          </h2>
           <Badge className="bg-blue-100 text-blue-800 border-0 font-medium">
             {activeCampaigns}개 캠페인
           </Badge>
@@ -306,10 +466,10 @@ export function CampaignOverview({ data, onCampaignSelect }: CampaignOverviewPro
         {selectedMetric && (
           <Card className="mb-6">
             <CardHeader>
-              <CardTitle className="text-lg">{metricConfig[selectedMetric].label} 추이 (최근 12개월)</CardTitle>
+              <CardTitle className="text-lg">{metricConfig[selectedMetric].label} 추이</CardTitle>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={400}>
                 <LineChart data={timelineData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                   <XAxis
@@ -320,7 +480,7 @@ export function CampaignOverview({ data, onCampaignSelect }: CampaignOverviewPro
                   <YAxis
                     stroke="#6b7280"
                     style={{ fontSize: '12px' }}
-                    tickFormatter={(value) => metricConfig[selectedMetric].format(value)}
+                    tickFormatter={(value: number) => metricConfig[selectedMetric].format(value)}
                   />
                   <Tooltip
                     formatter={(value: number) => metricConfig[selectedMetric].format(value)}
@@ -332,15 +492,42 @@ export function CampaignOverview({ data, onCampaignSelect }: CampaignOverviewPro
                     }}
                   />
                   <Legend />
-                  <Line
-                    type="monotone"
-                    dataKey={metricConfig[selectedMetric].dataKey}
-                    stroke={metricConfig[selectedMetric].color}
-                    strokeWidth={2}
-                    dot={{ fill: metricConfig[selectedMetric].color, r: 4 }}
-                    activeDot={{ r: 6 }}
-                    name={metricConfig[selectedMetric].label}
-                  />
+
+                  {/* 선택된 캠페인 라인 (전체 포함) */}
+                  {selectedCampaigns.map((campaign, index) => {
+                    // "전체"는 검은색 굵은 선
+                    if (campaign === '전체') {
+                      return (
+                        <Line
+                          key="전체"
+                          type="monotone"
+                          dataKey={`전체_${metricConfig[selectedMetric].dataKey}`}
+                          stroke="#000000"
+                          strokeWidth={3}
+                          dot={{ fill: '#000000', r: 5 }}
+                          activeDot={{ r: 7 }}
+                          name="전체"
+                        />
+                      );
+                    }
+
+                    // 개별 캠페인은 색상 지정
+                    const colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316', '#14b8a6'];
+                    const color = colors[index % colors.length];
+
+                    return (
+                      <Line
+                        key={campaign}
+                        type="monotone"
+                        dataKey={`${campaign}_${metricConfig[selectedMetric].dataKey}`}
+                        stroke={color}
+                        strokeWidth={2}
+                        dot={{ fill: color, r: 4 }}
+                        activeDot={{ r: 6 }}
+                        name={campaign}
+                      />
+                    );
+                  })}
                 </LineChart>
               </ResponsiveContainer>
             </CardContent>
@@ -518,14 +705,14 @@ export function CampaignOverview({ data, onCampaignSelect }: CampaignOverviewPro
             />
           </div>
           
-          <Tabs value={statusFilter} onValueChange={(value) => setStatusFilter(value as any)}>
+          <Tabs value={statusFilter} onValueChange={(value: string) => setStatusFilter(value as 'all' | 'active')}>
             <TabsList className="grid w-full grid-cols-2 lg:w-auto">
               <TabsTrigger value="all">전체</TabsTrigger>
               <TabsTrigger value="active">활성</TabsTrigger>
             </TabsList>
           </Tabs>
 
-          <Select value={sortBy} onValueChange={(value) => setSortBy(value as any)}>
+          <Select value={sortBy} onValueChange={(value: string) => setSortBy(value as 'name' | 'performance' | 'influencers' | 'views' | 'emv' | 'roas')}>
             <SelectTrigger className="w-40">
               <ArrowUpDown className="w-4 h-4 mr-2" />
               <SelectValue />
@@ -551,7 +738,7 @@ export function CampaignOverview({ data, onCampaignSelect }: CampaignOverviewPro
       {/* 캠페인 목록 */}
       {viewMode === 'grid' ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
-          {currentCampaigns.map(({ campaign, data: campaignData, stats }) => {
+          {currentCampaigns.map(({ campaign, stats }) => {
             // 팔로워 유형별 데이터 (도넛 차트용)
             const followerTypeData = Object.entries(stats.followerTypes).map(([type, count]) => ({
               name: type,
@@ -850,6 +1037,386 @@ export function CampaignOverview({ data, onCampaignSelect }: CampaignOverviewPro
           <p className="text-slate-400 text-sm mt-1">다른 검색어나 필터를 사용해보세요</p>
         </div>
       )}
+
+      {/* 세부 분석 섹션들 */}
+      <div className="space-y-6 mt-8">
+        {/* 회신율 분석 */}
+        <Card className="border-slate-200 shadow-sm">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-blue-600" />
+                회신율 분석
+              </CardTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => toggleAnalysisSection('responseRate')}
+                className="gap-2"
+              >
+                {expandedAnalysisSection === 'responseRate' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                {expandedAnalysisSection === 'responseRate' ? '접기' : '펼치기'}
+              </Button>
+            </div>
+          </CardHeader>
+
+          {expandedAnalysisSection === 'responseRate' && (
+            <CardContent>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div>
+                  <h4 className="font-medium mb-4 flex items-center gap-2">
+                    <User className="w-4 h-4 text-blue-600" />
+                    국가별 평균 회신율
+                  </h4>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={responseRateByCountry}
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="value"
+                          label={({ name, value }) => `${name}: ${value.toFixed(1)}%`}
+                        >
+                          {responseRateByCountry.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={Object.values(chartColors)[index % Object.values(chartColors).length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(value: number) => [`${value.toFixed(1)}%`, '회신율']} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="font-medium mb-4 flex items-center gap-2">
+                    <User className="w-4 h-4 text-emerald-600" />
+                    팔로워 유형별 평균 회신율
+                  </h4>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={responseRateByFollowerType}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                        <XAxis dataKey="name" stroke="#64748b" fontSize={12} />
+                        <YAxis stroke="#64748b" fontSize={12} />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'white',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: '8px',
+                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                          }}
+                          formatter={(value: number) => [`${value.toFixed(1)}%`, '회신율']}
+                        />
+                        <Bar dataKey="value" fill={chartColors.emerald} radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          )}
+        </Card>
+
+        {/* 조회수 분석 */}
+        <Card className="border-slate-200 shadow-sm">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Eye className="w-5 h-5 text-purple-600" />
+                조회수 분석
+              </CardTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => toggleAnalysisSection('views')}
+                className="gap-2"
+              >
+                {expandedAnalysisSection === 'views' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                {expandedAnalysisSection === 'views' ? '접기' : '펼치기'}
+              </Button>
+            </div>
+          </CardHeader>
+
+          {expandedAnalysisSection === 'views' && (
+            <CardContent>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div>
+                  <h4 className="font-medium mb-4 flex items-center gap-2">
+                    <Eye className="w-4 h-4 text-purple-600" />
+                    국가별 총 조회수
+                  </h4>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={viewsByCountry}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                        <XAxis dataKey="name" stroke="#64748b" fontSize={12} />
+                        <YAxis stroke="#64748b" fontSize={12} />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'white',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: '8px',
+                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                          }}
+                          formatter={(value: number) => [value.toLocaleString(), '조회수']}
+                        />
+                        <Bar dataKey="value" fill={chartColors.purple} radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="font-medium mb-4 flex items-center gap-2">
+                    <User className="w-4 h-4 text-slate-600" />
+                    팔로워 유형별 총 조회수
+                  </h4>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={viewsByFollowerType}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                        <XAxis dataKey="name" stroke="#64748b" fontSize={12} />
+                        <YAxis stroke="#64748b" fontSize={12} />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'white',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: '8px',
+                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                          }}
+                          formatter={(value: number) => [value.toLocaleString(), '조회수']}
+                        />
+                        <Bar dataKey="value" fill={chartColors.slate} radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          )}
+        </Card>
+
+        {/* EMV 분석 */}
+        <Card className="border-slate-200 shadow-sm">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Star className="w-5 h-5 text-blue-600" />
+                EMV 분석
+              </CardTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => toggleAnalysisSection('emv')}
+                className="gap-2"
+              >
+                {expandedAnalysisSection === 'emv' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                {expandedAnalysisSection === 'emv' ? '접기' : '펼치기'}
+              </Button>
+            </div>
+          </CardHeader>
+
+          {expandedAnalysisSection === 'emv' && (
+            <CardContent>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div>
+                  <h4 className="font-medium mb-4 flex items-center gap-2">
+                    <Star className="w-4 h-4 text-blue-600" />
+                    국가별 총 EMV
+                  </h4>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={emvByCountry}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                        <XAxis dataKey="name" stroke="#64748b" fontSize={12} />
+                        <YAxis stroke="#64748b" fontSize={12} />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'white',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: '8px',
+                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                          }}
+                          formatter={(value: number) => [`$${value.toLocaleString()}`, 'EMV']}
+                        />
+                        <Bar dataKey="value" fill={chartColors.blue} radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="font-medium mb-4 flex items-center gap-2">
+                    <User className="w-4 h-4 text-blue-600" />
+                    팔로워 유형별 총 EMV
+                  </h4>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={emvByFollowerType}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                        <XAxis dataKey="name" stroke="#64748b" fontSize={12} />
+                        <YAxis stroke="#64748b" fontSize={12} />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'white',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: '8px',
+                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                          }}
+                          formatter={(value: number) => [`$${value.toLocaleString()}`, 'EMV']}
+                        />
+                        <Bar dataKey="value" fill={chartColors.blue} radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          )}
+        </Card>
+
+        {/* ROAS 분석 */}
+        <Card className="border-slate-200 shadow-sm">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Target className="w-5 h-5 text-emerald-600" />
+                ROAS 분석
+              </CardTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => toggleAnalysisSection('roas')}
+                className="gap-2"
+              >
+                {expandedAnalysisSection === 'roas' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                {expandedAnalysisSection === 'roas' ? '접기' : '펼치기'}
+              </Button>
+            </div>
+          </CardHeader>
+
+          {expandedAnalysisSection === 'roas' && (
+            <CardContent>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div>
+                  <h4 className="font-medium mb-4 flex items-center gap-2">
+                    <Target className="w-4 h-4 text-emerald-600" />
+                    국가별 평균 ROAS
+                  </h4>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={roasByCountry}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                        <XAxis dataKey="name" stroke="#64748b" fontSize={12} />
+                        <YAxis stroke="#64748b" fontSize={12} />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'white',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: '8px',
+                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                          }}
+                          formatter={(value: number) => [value.toLocaleString(), 'ROAS']}
+                        />
+                        <Bar dataKey="value" fill={chartColors.emerald} radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="font-medium mb-4 flex items-center gap-2">
+                    <User className="w-4 h-4 text-emerald-600" />
+                    팔로워 유형별 평균 ROAS
+                  </h4>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={roasByFollowerType}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                        <XAxis dataKey="name" stroke="#64748b" fontSize={12} />
+                        <YAxis stroke="#64748b" fontSize={12} />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'white',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: '8px',
+                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                          }}
+                          formatter={(value: number) => [value.toLocaleString(), 'ROAS']}
+                        />
+                        <Bar dataKey="value" fill={chartColors.emerald} radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          )}
+        </Card>
+
+        {/* 저장수 분석 */}
+        <Card className="border-slate-200 shadow-sm">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="w-5 h-5 text-green-600" />
+                저장수 분석
+              </CardTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => toggleAnalysisSection('saves')}
+                className="gap-2"
+              >
+                {expandedAnalysisSection === 'saves' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                {expandedAnalysisSection === 'saves' ? '접기' : '펼치기'}
+              </Button>
+            </div>
+          </CardHeader>
+
+          {expandedAnalysisSection === 'saves' && (
+            <CardContent>
+              <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
+                <div>
+                  <h4 className="font-medium mb-4 flex items-center gap-2">
+                    <BarChart3 className="w-4 h-4 text-green-600" />
+                    캠페인별 총 저장수
+                  </h4>
+                  <div className="h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={savesData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                        <XAxis
+                          dataKey="name"
+                          stroke="#64748b"
+                          fontSize={12}
+                          angle={-45}
+                          textAnchor="end"
+                          height={80}
+                        />
+                        <YAxis stroke="#64748b" fontSize={12} />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'white',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: '8px',
+                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                          }}
+                          formatter={(value: number) => [value.toLocaleString(), '저장수']}
+                        />
+                        <Bar dataKey="value" fill={chartColors.green} radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          )}
+        </Card>
+      </div>
     </div>
   );
 }

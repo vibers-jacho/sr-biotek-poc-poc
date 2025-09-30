@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { SidebarProvider, SidebarTrigger } from './components/ui/sidebar';
 import { Sidebar, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarMenuSub, SidebarMenuSubItem, SidebarMenuSubButton } from './components/ui/sidebar';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './components/ui/collapsible';
-import { Users, Building, BarChart3, MessageSquare, ChevronDown, TrendingUp, Target } from 'lucide-react';
+import { Users, Building, BarChart3, MessageSquare, ChevronDown, TrendingUp } from 'lucide-react';
 import { InfluencerList } from './components/InfluencerList';
 import { CampaignKanban } from './components/CampaignKanban';
 import { ContactManagement } from './components/ContactManagement';
@@ -29,14 +29,14 @@ export default function App() {
     contactInfo: mockContactInfo,
     filters: {
       dateRange: {
-        start: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        start: new Date(Date.now() - 29 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 지난 30일
         end: new Date().toISOString().split('T')[0]
       },
       staff: [],
       countries: [],
       followerTypes: [],
       costTypes: [],
-      campaigns: []
+      campaigns: ['전체']
     }
   });
 

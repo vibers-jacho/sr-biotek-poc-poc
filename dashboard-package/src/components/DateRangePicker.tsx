@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { CalendarIcon, ChevronDown } from 'lucide-react';
 import { format, subDays, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { FilterState } from '../types';
+import { FilterState } from '../App';
 
 interface DateRangePickerProps {
   filters: FilterState;
@@ -74,28 +74,6 @@ const presets = [
     getValue: () => {
       const end = new Date();
       const start = subMonths(end, 3);
-      return {
-        start: format(start, 'yyyy-MM-dd'),
-        end: format(end, 'yyyy-MM-dd')
-      };
-    }
-  },
-  {
-    label: '지난 6개월',
-    getValue: () => {
-      const end = new Date();
-      const start = subMonths(end, 6);
-      return {
-        start: format(start, 'yyyy-MM-dd'),
-        end: format(end, 'yyyy-MM-dd')
-      };
-    }
-  },
-  {
-    label: '지난 1년',
-    getValue: () => {
-      const end = new Date();
-      const start = subMonths(end, 12);
       return {
         start: format(start, 'yyyy-MM-dd'),
         end: format(end, 'yyyy-MM-dd')

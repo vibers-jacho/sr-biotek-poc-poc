@@ -911,13 +911,7 @@ export function InfluencerList({ influencers, onUpdateInfluencer }: InfluencerLi
                                 value={influencer.url}
                                 type="url"
                                 onSave={(value) => handleUpdate(influencer.id, 'url', value)}
-                                className="text-sm"
-                                style={{
-                                  backgroundColor: 'white',
-                                  border: '1px solid #d1d5db',
-                                  borderRadius: '6px',
-                                  padding: '8px 12px'
-                                }}
+                                className="text-sm bg-white border border-gray-300 rounded-md p-2"
                               />
                             </div>
 
@@ -936,13 +930,7 @@ export function InfluencerList({ influencers, onUpdateInfluencer }: InfluencerLi
                                 type="url"
                                 onSave={(value) => handleUpdate(influencer.id, 'postLink', value)}
                                 placeholder="포스팅 링크 입력"
-                                className="text-sm"
-                                style={{
-                                  backgroundColor: 'white',
-                                  border: '1px solid #d1d5db',
-                                  borderRadius: '6px',
-                                  padding: '8px 12px'
-                                }}
+                                className="text-sm bg-white border border-gray-300 rounded-md p-2"
                               />
                             </div>
 
@@ -961,13 +949,7 @@ export function InfluencerList({ influencers, onUpdateInfluencer }: InfluencerLi
                                 type="date"
                                 onSave={(value) => handleUpdate(influencer.id, 'scheduledPostDate', value)}
                                 placeholder="날짜 선택"
-                                className="text-sm"
-                                style={{
-                                  backgroundColor: 'white',
-                                  border: '1px solid #d1d5db',
-                                  borderRadius: '6px',
-                                  padding: '8px 12px'
-                                }}
+                                className="text-sm bg-white border border-gray-300 rounded-md p-2"
                               />
                             </div>
                           </div>
@@ -1050,8 +1032,7 @@ export function InfluencerList({ influencers, onUpdateInfluencer }: InfluencerLi
                                     type="number"
                                     onSave={(value) => handleUpdate(influencer.id, 'likes', Number(value))}
                                     displayFormatter={(val) => val?.toLocaleString() || '0'}
-                                    className="text-xl font-bold"
-                                    style={{ color: '#1f2937' }}
+                                    className="text-xl font-bold text-gray-800"
                                   />
                                 </div>
                               </div>
@@ -1078,8 +1059,7 @@ export function InfluencerList({ influencers, onUpdateInfluencer }: InfluencerLi
                                     type="number"
                                     onSave={(value) => handleUpdate(influencer.id, 'saves', Number(value))}
                                     displayFormatter={(val) => val?.toLocaleString() || '0'}
-                                    className="text-xl font-bold"
-                                    style={{ color: '#1f2937' }}
+                                    className="text-xl font-bold text-gray-800"
                                   />
                                 </div>
                               </div>

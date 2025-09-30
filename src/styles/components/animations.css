@@ -1,0 +1,25 @@
+/**
+ * Animation Utilities
+ * Custom animation classes and keyframes
+ */
+
+/* Smooth animations */
+.animate-in {
+  animation-duration: 200ms;
+  animation-fill-mode: both;
+}
+
+.slide-in-from-bottom-2 {
+  animation-name: slideInFromBottom;
+}
+
+@keyframes slideInFromBottom {
+  from {
+    transform: translateX(-50%) translateY(0.5rem);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+}

@@ -1,0 +1,15 @@
+/**
+ * Main Stylesheet Entry Point
+ * Imports Tailwind CSS with custom modular component styles
+ */
+
+/* Import Tailwind CSS with base theme variables */
+@import '../index.css';
+
+/* Additional custom styles (theme variables are now in index.css) */
+@import './theme/typography.css';
+@import './base/elements.css';
+@import './components/table.css';
+@import './components/form.css';
+@import './components/calendar.css';
+@import './components/animations.css';

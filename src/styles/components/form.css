@@ -1,0 +1,15 @@
+/**
+ * Form Component Styles
+ * Custom styles for form inputs, checkboxes, and other form elements
+ */
+
+/* Better checkbox styling */
+.data-\[state\=checked\]\:bg-primary[data-state=checked] {
+  background-color: hsl(var(--primary));
+  border-color: hsl(var(--primary));
+}
+
+.data-\[state\=checked\]\:bg-destructive[data-state=checked] {
+  background-color: hsl(var(--destructive));
+  border-color: hsl(var(--destructive));
+}

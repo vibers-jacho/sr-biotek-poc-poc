@@ -1,0 +1,37 @@
+/**
+ * Table Component Styles
+ * Custom styles for table elements and sticky columns
+ */
+
+/* Prevent double scrollbars */
+.overflow-x-auto {
+  overflow-x: auto;
+  overflow-y: visible;
+}
+
+/* Ensure table doesn't create unnecessary scroll */
+table {
+  min-width: 100%;
+}
+
+/* Better table styling */
+.sticky {
+  position: sticky !important;
+}
+
+/* Sticky column shadows */
+.sticky.left-0::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: -1px;
+  bottom: 0;
+  width: 1px;
+  background: linear-gradient(to right, rgba(0,0,0,0.05) 0%, transparent 100%);
+  pointer-events: none;
+}
+
+/* Table row hover with sticky columns */
+tr:hover td.sticky {
+  background-color: hsl(var(--muted) / 0.5);
+}

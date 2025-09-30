@@ -20,6 +20,20 @@ export interface Influencer {
   likes: number;
   saves: number;
   round: number;
+  // Analytics/Metrics fields
+  country?: string;
+  followerType?: '메가' | '매크로' | '마이크로' | '나노';
+  followerCount?: number;
+  staff?: string;
+  campaign?: string;
+  costType?: '무가' | '유가';
+  responseRate?: number;
+  comments?: number;
+  shares?: number;
+  date?: string;
+  emv?: number; // Earned Media Value
+  roas?: number; // Return on Ad Spend
+  cost?: number; // 마케팅 비용
 }
 
 export interface ContactInfo {
@@ -48,3 +62,12 @@ export interface Campaign {
   hospital: string;
   influencerIds: string[];
 }
+
+export type FilterState = {
+  dateRange: { start: string; end: string };
+  staff: string[];
+  countries: string[];
+  followerTypes: string[];
+  costTypes: string[];
+  campaigns: string[];
+};

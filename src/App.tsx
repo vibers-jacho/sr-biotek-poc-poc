@@ -2,29 +2,42 @@ import React, { useState } from 'react';
 import { SidebarProvider, SidebarTrigger } from './components/ui/sidebar';
 import { Sidebar, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarMenuSub, SidebarMenuSubItem, SidebarMenuSubButton } from './components/ui/sidebar';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './components/ui/collapsible';
-import { Users, Building, BarChart3, MessageSquare, ChevronDown } from 'lucide-react';
+import { Users, Building, BarChart3, MessageSquare, ChevronDown, TrendingUp, Target } from 'lucide-react';
 import { InfluencerList } from './components/InfluencerList';
 import { CampaignKanban } from './components/CampaignKanban';
 import { ContactManagement } from './components/ContactManagement';
+import { AnalyticsDashboard } from './components/AnalyticsDashboard';
 import { mockInfluencers, mockContactInfo, mockCampaigns } from './data/mockData';
-import { Influencer, ContactInfo } from './types';
+import { Influencer, ContactInfo, FilterState } from './types';
 import { Toaster } from './components/ui/sonner';
 
-type ViewType = 'influencers' | 'campaign-status' | 'campaign-contact';
+type ViewType = 'influencers' | 'campaign-status' | 'campaign-contact' | 'analytics' | 'campaign-management';
 
 interface AppState {
   currentView: ViewType;
   selectedHospital?: string;
   influencers: Influencer[];
   contactInfo: ContactInfo[];
+  filters: FilterState;
 }
 
 export default function App() {
   const [state, setState] = useState<AppState>({
-    currentView: 'influencers',
+    currentView: 'analytics',
     selectedHospital: undefined,
     influencers: mockInfluencers,
-    contactInfo: mockContactInfo
+    contactInfo: mockContactInfo,
+    filters: {
+      dateRange: {
+        start: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        end: new Date().toISOString().split('T')[0]
+      },
+      staff: [],
+      countries: [],
+      followerTypes: [],
+      costTypes: [],
+      campaigns: []
+    }
   });
 
   const handleUpdateInfluencer = (id: string, updates: Partial<Influencer>) => {
@@ -39,9 +52,16 @@ export default function App() {
   const handleUpdateContact = (id: string, updates: Partial<ContactInfo>) => {
     setState(prev => ({
       ...prev,
-      contactInfo: prev.contactInfo.map(contact => 
+      contactInfo: prev.contactInfo.map(contact =>
         contact.id === id ? { ...contact, ...updates } : contact
       )
+    }));
+  };
+
+  const handleFiltersChange = (filters: FilterState) => {
+    setState(prev => ({
+      ...prev,
+      filters
     }));
   };
 
@@ -83,7 +103,16 @@ export default function App() {
             onUpdateContact={handleUpdateContact}
           />
         );
-      
+
+      case 'analytics':
+        return (
+          <AnalyticsDashboard
+            data={state.influencers}
+            filters={state.filters}
+            onFiltersChange={handleFiltersChange}
+          />
+        );
+
       default:
         return null;
     }
@@ -111,7 +140,17 @@ export default function App() {
           <SidebarContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton 
+                <SidebarMenuButton
+                  onClick={() => handleNavigation('analytics')}
+                  isActive={state.currentView === 'analytics'}
+                >
+                  <TrendingUp className="mr-2 h-4 w-4" />
+                  성과 분석
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <SidebarMenuButton
                   onClick={() => handleNavigation('influencers')}
                   isActive={state.currentView === 'influencers'}
                 >
@@ -119,7 +158,7 @@ export default function App() {
                   인플루언서 관리
                 </SidebarMenuButton>
               </SidebarMenuItem>
-              
+
               <Collapsible defaultOpen>
                 <SidebarMenuItem>
                   <CollapsibleTrigger asChild>
@@ -179,6 +218,9 @@ export default function App() {
             <div className="flex-1">
               {state.currentView === 'influencers' && (
                 <h2>인플루언서 전체 관리</h2>
+              )}
+              {state.currentView === 'analytics' && (
+                <h2>성과 분석 대시보드</h2>
               )}
               {state.currentView === 'campaign-status' && state.selectedHospital && (
                 <h2>{state.selectedHospital} - 상태 관리</h2>

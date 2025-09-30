@@ -1,0 +1,14 @@
+/**
+ * Base Element Styles
+ * Fundamental styles for HTML elements and app structure
+ */
+
+html, body {
+  height: 100%;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
